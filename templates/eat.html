@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="form-panel eat-panel">
+    <div class="panel-heading">
+      <h2>Eat</h2>
+      <p>Choose a meal for each party member. Full meal uses 1 food and 5 water. Half-meal uses 0.5 food and 2.5 water.</p>
+    </div>
+
+    {% with popup_messages = get_flashed_messages(category_filter=['popup']) %}
+      {% if popup_messages %}
+        <script>
+          alert({{ popup_messages[0]|tojson }});
+        </script>
+      {% endif %}
+    {% endwith %}
+
+    <form class="eat-form" method="post" action="{{ url_for('apply_meals') }}">
+      <div class="meal-list">
+        {% for member in members %}
+          <div class="meal-row">
+            <div class="meal-member">
+              <strong>{{ member["name"] }}</strong>
+              <span>STR mod {{ member["str_mod"] }} | Max slots {{ member["max_slots"] }}</span>
+            </div>
+            <div class="meal-toggle-group">
+              <label>
+                <input type="radio" name="meal_{{ member['id'] }}" value="full" checked>
+                <span>Full meal</span>
+              </label>
+              <label>
+                <input type="radio" name="meal_{{ member['id'] }}" value="half">
+                <span>Half-meal</span>
+              </label>
+              <label>
+                <input type="radio" name="meal_{{ member['id'] }}" value="none">
+                <span>No meal</span>
+              </label>
+            </div>
+          </div>
+        {% else %}
+          <p class="muted-text">No party members to feed yet.</p>
+        {% endfor %}
+      </div>
+
+      <div class="form-actions">
+        <a class="ghost-button" href="{{ url_for('index') }}">Back</a>
+        <button class="primary-button" type="submit">Eat</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

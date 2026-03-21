@@ -10,9 +10,21 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "expedition.db"
 BASE_SLOTS = 10
 WATER_STEP = 5
+FULL_MEAL_FOOD = 1.0
+FULL_MEAL_WATER = 5.0
+HALF_MEAL_FOOD = 0.5
+HALF_MEAL_WATER = 2.5
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-secret-key"
+
+
+@app.template_filter("pretty_amount")
+def pretty_amount(value: float | int) -> str:
+    numeric = float(value)
+    if numeric.is_integer():
+        return str(int(numeric))
+    return f"{numeric:.1f}".rstrip("0").rstrip(".")
 
 
 def get_db() -> sqlite3.Connection:
@@ -53,17 +65,27 @@ def create_db() -> None:
 
         CREATE TABLE IF NOT EXISTS party_supplies (
             id INTEGER PRIMARY KEY CHECK (id = 1),
-            food INTEGER NOT NULL DEFAULT 0,
-            water INTEGER NOT NULL DEFAULT 0
+            food REAL NOT NULL DEFAULT 0,
+            water REAL NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS loot_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            amount INTEGER NOT NULL DEFAULT 0
+            amount INTEGER NOT NULL DEFAULT 0,
+            gold_price INTEGER NOT NULL DEFAULT 0
         );
         """
     )
+
+    loot_columns = {
+        row[1] for row in db.execute("PRAGMA table_info(loot_items)").fetchall()
+    }
+    if "gold_price" not in loot_columns:
+        db.execute(
+            "ALTER TABLE loot_items ADD COLUMN gold_price INTEGER NOT NULL DEFAULT 0"
+        )
+
     db.execute(
         """
         INSERT INTO party_supplies (id, food, water)
@@ -114,58 +136,75 @@ def get_party_supplies() -> sqlite3.Row:
 def get_loot_items() -> list[sqlite3.Row]:
     return get_db().execute(
         """
-        SELECT id, name, amount
+        SELECT id, name, amount, gold_price
         FROM loot_items
         ORDER BY id DESC
         """
     ).fetchall()
 
 
-def slots_for_supply(amount: int) -> int:
+def slots_for_supply(amount: float) -> int:
     if amount <= 0:
         return 0
-    return (amount + 4) // 5
+    return int((amount + 4.9999) // 5)
 
 
-@app.route("/")
-def index() -> str:
+def overload_limit(max_slots: int) -> int:
+    return max_slots // 2
+
+
+def get_members_with_capacity() -> list[dict[str, object]]:
     rows = get_db().execute(
         """
         SELECT
             m.id,
             m.name,
             m.str_mod,
+            m.used_slots,
             COALESCE(SUM(e.amount), 0) AS extra_slots_total
         FROM members AS m
         LEFT JOIN extra_slots AS e ON e.member_id = m.id
-        GROUP BY m.id, m.name, m.str_mod
+        GROUP BY m.id, m.name, m.str_mod, m.used_slots
         ORDER BY m.id DESC
         """
     ).fetchall()
 
-    members = []
+    members: list[dict[str, object]] = []
     for row in rows:
         extra_slots = get_member_extra_slots(row["id"])
         member_max_slots = BASE_SLOTS + row["str_mod"] + row["extra_slots_total"]
+        current_free_slots = member_max_slots - row["used_slots"]
+        overload_slots = overload_limit(member_max_slots)
         members.append(
             {
                 "id": row["id"],
                 "name": row["name"],
                 "str_mod": row["str_mod"],
+                "used_slots": row["used_slots"],
                 "extra_slots_total": row["extra_slots_total"],
                 "max_slots": member_max_slots,
+                "current_free_slots": current_free_slots,
+                "overload_limit": overload_slots,
                 "extra_slots": extra_slots,
             }
         )
+    return members
 
+
+@app.route("/")
+def index() -> str:
+    members = get_members_with_capacity()
     supplies = get_party_supplies()
     loot_items = get_loot_items()
 
-    food_slots = slots_for_supply(supplies["food"])
-    water_slots = slots_for_supply(supplies["water"])
+    food_slots = slots_for_supply(float(supplies["food"]))
+    water_slots = slots_for_supply(float(supplies["water"]))
     loot_slots = sum(item["amount"] for item in loot_items)
-    max_party_slots = sum(member["max_slots"] for member in members)
-    occupied_slots = food_slots + water_slots + loot_slots
+    personal_loot_slots = sum(int(member["used_slots"]) for member in members)
+    max_party_slots = sum(int(member["max_slots"]) for member in members)
+    occupied_slots = personal_loot_slots + food_slots + water_slots + loot_slots
+    party_overload_limit = overload_limit(max_party_slots)
+    total_gold_value = sum(item["gold_price"] for item in loot_items)
 
     return render_template(
         "index.html",
@@ -179,24 +218,73 @@ def index() -> str:
             "food_slots": food_slots,
             "water_slots": water_slots,
             "loot_slots": loot_slots,
+            "personal_loot_slots": personal_loot_slots,
+            "party_overload_limit": party_overload_limit,
+            "total_gold_value": total_gold_value,
         },
     )
+
+
+@app.route("/eat")
+def eat_page() -> str:
+    members = get_members_with_capacity()
+    return render_template("eat.html", members=members)
+
+
+@app.post("/eat")
+def apply_meals() -> str:
+    members = get_members_with_capacity()
+    food_needed = 0.0
+    water_needed = 0.0
+
+    for member in members:
+        meal = str(request.form.get(f"meal_{member['id']}", "full")).strip()
+        if meal == "full":
+            food_needed += FULL_MEAL_FOOD
+            water_needed += FULL_MEAL_WATER
+        elif meal == "half":
+            food_needed += HALF_MEAL_FOOD
+            water_needed += HALF_MEAL_WATER
+        elif meal != "none":
+            raise ValueError("Unknown meal option.")
+
+    supplies = get_party_supplies()
+    if float(supplies["food"]) < food_needed or float(supplies["water"]) < water_needed:
+        flash("Not enough food or water for that meal plan.", "popup")
+        return redirect(url_for("eat_page"))
+
+    get_db().execute(
+        """
+        UPDATE party_supplies
+        SET food = ?, water = ?
+        WHERE id = 1
+        """,
+        (float(supplies["food"]) - food_needed, float(supplies["water"]) - water_needed),
+    )
+    get_db().commit()
+    flash("Meal plan applied.")
+    return redirect(url_for("index"))
 
 
 @app.route("/add", methods=["GET", "POST"])
 def add_member() -> str:
     if request.method == "POST":
         form = parse_member_form(request.form)
+        member_max_slots = BASE_SLOTS + int(form["str_mod"]) + sum(
+            int(item["amount"]) for item in form["extra_slots"]
+        )
+        validate_member_load(member_max_slots, int(form["used_slots"]))
         db = get_db()
         cursor = db.execute(
             """
             INSERT INTO members (name, str_mod, max_slots, used_slots)
-            VALUES (?, ?, ?, 0)
+            VALUES (?, ?, ?, ?)
             """,
             (
                 form["name"],
                 form["str_mod"],
-                BASE_SLOTS + form["str_mod"],
+                BASE_SLOTS + int(form["str_mod"]),
+                form["used_slots"],
             ),
         )
         member_id = cursor.lastrowid
@@ -218,17 +306,22 @@ def edit_member(member_id: int) -> str:
     member = get_member(member_id)
     if request.method == "POST":
         form = parse_member_form(request.form)
+        member_max_slots = BASE_SLOTS + int(form["str_mod"]) + sum(
+            int(item["amount"]) for item in form["extra_slots"]
+        )
+        validate_member_load(member_max_slots, int(form["used_slots"]))
         db = get_db()
         db.execute(
             """
             UPDATE members
-            SET name = ?, str_mod = ?, max_slots = ?, used_slots = 0
+            SET name = ?, str_mod = ?, max_slots = ?, used_slots = ?
             WHERE id = ?
             """,
             (
                 form["name"],
                 form["str_mod"],
-                BASE_SLOTS + form["str_mod"],
+                BASE_SLOTS + int(form["str_mod"]),
+                form["used_slots"],
                 member_id,
             ),
         )
@@ -256,8 +349,10 @@ def edit_member(member_id: int) -> str:
 @app.post("/delete/<int:member_id>")
 def delete_member(member_id: int) -> str:
     get_member(member_id)
-    get_db().execute("DELETE FROM members WHERE id = ?", (member_id,))
-    get_db().commit()
+    db = get_db()
+    db.execute("DELETE FROM members WHERE id = ?", (member_id,))
+    validate_party_capacity(db)
+    db.commit()
     flash("Entry deleted.")
     return redirect(url_for("index"))
 
@@ -266,22 +361,36 @@ def delete_member(member_id: int) -> str:
 def update_supplies() -> str:
     resource = str(request.form.get("resource", "")).strip()
     direction = str(request.form.get("direction", "")).strip()
+    mode = str(request.form.get("mode", "quick")).strip()
 
     if resource not in {"food", "water"}:
         raise ValueError("Unknown supply type.")
-    if direction not in {"add", "remove"}:
-        raise ValueError("Unknown supply action.")
 
-    step = WATER_STEP if resource == "water" else 1
-    delta = step if direction == "add" else -step
+    if mode == "quick":
+        if direction not in {"add", "remove"}:
+            raise ValueError("Unknown supply action.")
+        step = WATER_STEP if resource == "water" else 1
+        delta = float(step if direction == "add" else -step)
+        supplies = get_party_supplies()
+        next_amount = max(0.0, float(supplies[resource]) + delta)
+    elif mode == "set":
+        try:
+            amount = float(request.form.get("amount", 0))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Supply amount must be a number.") from exc
+        if amount < 0:
+            raise ValueError("Supply amount cannot be negative.")
+        next_amount = amount
+    else:
+        raise ValueError("Unknown supply mode.")
 
-    supplies = get_party_supplies()
-    next_amount = max(0, supplies[resource] + delta)
-    get_db().execute(
+    db = get_db()
+    db.execute(
         f"UPDATE party_supplies SET {resource} = ? WHERE id = 1",
         (next_amount,),
     )
-    get_db().commit()
+    validate_party_capacity(db)
+    db.commit()
     return redirect(url_for("index"))
 
 
@@ -293,28 +402,34 @@ def add_loot() -> str:
 
     try:
         amount = int(request.form.get("amount", 0))
+        gold_price = int(request.form.get("gold_price", 0))
     except (TypeError, ValueError) as exc:
-        raise ValueError("Loot weight must be a number.") from exc
+        raise ValueError("Loot weight and gold price must be numbers.") from exc
 
     if amount <= 0:
         raise ValueError("Loot weight must be greater than 0.")
+    if gold_price < 0:
+        raise ValueError("Gold price cannot be negative.")
 
-    get_db().execute(
+    db = get_db()
+    db.execute(
         """
-        INSERT INTO loot_items (name, amount)
-        VALUES (?, ?)
+        INSERT INTO loot_items (name, amount, gold_price)
+        VALUES (?, ?, ?)
         """,
-        (name, amount),
+        (name, amount, gold_price),
     )
-    get_db().commit()
+    validate_party_capacity(db)
+    db.commit()
     flash("Loot added.")
     return redirect(url_for("index"))
 
 
 @app.post("/loot/delete/<int:loot_id>")
 def delete_loot(loot_id: int) -> str:
-    get_db().execute("DELETE FROM loot_items WHERE id = ?", (loot_id,))
-    get_db().commit()
+    db = get_db()
+    db.execute("DELETE FROM loot_items WHERE id = ?", (loot_id,))
+    db.commit()
     flash("Loot removed.")
     return redirect(url_for("index"))
 
@@ -332,6 +447,53 @@ def save_extra_slots(
         )
 
 
+def validate_member_load(max_slots: int, used_slots: int) -> None:
+    minimum_free_slots = -overload_limit(max_slots)
+    free_slots = max_slots - used_slots
+    if free_slots < minimum_free_slots:
+        raise ValueError(
+            f"Member free slots cannot go below {minimum_free_slots}."
+        )
+
+
+def validate_party_capacity(db: sqlite3.Connection) -> None:
+    members = db.execute(
+        """
+        SELECT
+            m.id,
+            m.str_mod,
+            m.used_slots,
+            COALESCE(SUM(e.amount), 0) AS extra_slots_total
+        FROM members AS m
+        LEFT JOIN extra_slots AS e ON e.member_id = m.id
+        GROUP BY m.id, m.str_mod, m.used_slots
+        """
+    ).fetchall()
+    supplies = db.execute(
+        "SELECT food, water FROM party_supplies WHERE id = 1"
+    ).fetchone()
+    loot_items = db.execute("SELECT amount FROM loot_items").fetchall()
+
+    max_party_slots = 0
+    personal_loot_slots = 0
+    for member in members:
+        member_max_slots = BASE_SLOTS + member["str_mod"] + member["extra_slots_total"]
+        max_party_slots += member_max_slots
+        personal_loot_slots += member["used_slots"]
+
+    food_slots = slots_for_supply(float(supplies["food"])) if supplies else 0
+    water_slots = slots_for_supply(float(supplies["water"])) if supplies else 0
+    loot_slots = sum(item["amount"] for item in loot_items)
+    occupied_slots = personal_loot_slots + food_slots + water_slots + loot_slots
+    free_party_slots = max_party_slots - occupied_slots
+    minimum_free_slots = -overload_limit(max_party_slots)
+
+    if free_party_slots < minimum_free_slots:
+        raise ValueError(
+            f"Party free slots cannot go below {minimum_free_slots}."
+        )
+
+
 def parse_member_form(form: dict) -> dict[str, int | str | list[dict[str, int | str]]]:
     name = str(form.get("name", "")).strip()
 
@@ -340,8 +502,12 @@ def parse_member_form(form: dict) -> dict[str, int | str | list[dict[str, int | 
 
     try:
         str_mod = int(form.get("str_mod", 0))
+        used_slots = int(form.get("used_slots", 0))
     except (TypeError, ValueError) as exc:
-        raise ValueError("Strength mod must be a number.") from exc
+        raise ValueError("Strength mod and personal loot must be numbers.") from exc
+
+    if used_slots < 0:
+        raise ValueError("Slots cannot be negative.")
 
     extra_slot_names = form.getlist("extra_slots_name")
     extra_slot_amounts = form.getlist("extra_slots_amount")
@@ -371,6 +537,7 @@ def parse_member_form(form: dict) -> dict[str, int | str | list[dict[str, int | 
     return {
         "name": name,
         "str_mod": str_mod,
+        "used_slots": used_slots,
         "extra_slots": extra_slots,
     }
 

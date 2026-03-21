@@ -27,11 +27,13 @@
         <a class="primary-button" href="{{ url_for('add_member') }}">Add</a>
       </header>
 
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
+      {% with flash_items = get_flashed_messages(with_categories=true) %}
+        {% if flash_items %}
           <div class="flash-stack">
-            {% for message in messages %}
-              <div class="flash-message">{{ message }}</div>
+            {% for category, message in flash_items %}
+              {% if category != 'popup' %}
+                <div class="flash-message">{{ message }}</div>
+              {% endif %}
             {% endfor %}
           </div>
         {% endif %}

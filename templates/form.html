@@ -4,7 +4,7 @@
   <section class="form-panel">
     <div class="panel-heading">
       <h2>{{ page_title }}</h2>
-      <p>Base slots are always 10. Max slots are calculated as 10 + STR mod + extra slots.</p>
+      <p>Base slots are always 10. Current free slots are calculated as 10 + STR mod + extra slots - personal loot.</p>
     </div>
 
     <form class="member-form" method="post">
@@ -25,6 +25,16 @@
           type="number"
           name="str_mod"
           value="{{ member['str_mod'] if member else 0 }}"
+        >
+      </label>
+
+      <label>
+        Personal loot slots
+        <input
+          type="number"
+          name="used_slots"
+          min="0"
+          value="{{ member['used_slots'] if member else 0 }}"
         >
       </label>
 

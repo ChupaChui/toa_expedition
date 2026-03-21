@@ -8,6 +8,10 @@
   --muted: #b4c3d9;
   --accent: #62a9de;
   --accent-strong: #88caf7;
+  --success: #59c36a;
+  --success-strong: #7ae18c;
+  --warning: #d6b24b;
+  --warning-panel: rgba(64, 53, 14, 0.72);
   --danger: #e08973;
   --shadow: 0 24px 50px rgba(0, 0, 0, 0.42);
 }
@@ -289,8 +293,10 @@ h1 {
 .actions a,
 .actions button,
 .quick-actions button,
+.resource-add-form button,
 .remove-row-button,
-.loot-item-actions button {
+.loot-item-actions button,
+.meal-toggle-group span {
   border: 0;
   border-radius: 999px;
   padding: 10px 16px;
@@ -306,8 +312,15 @@ h1 {
   box-shadow: 0 12px 22px rgba(98, 169, 222, 0.22);
 }
 
+.eat-button {
+  background: linear-gradient(180deg, var(--success-strong), var(--success));
+  color: #041108;
+  box-shadow: 0 12px 22px rgba(89, 195, 106, 0.24);
+}
+
 .ghost-button,
-.quick-actions button {
+.quick-actions button,
+.resource-add-form button {
   background: rgba(13, 20, 34, 0.78);
   border: 1px solid var(--border);
   color: var(--text);
@@ -343,6 +356,14 @@ h1 {
   gap: 14px;
 }
 
+.members-column {
+  order: 1;
+}
+
+.sidebar-column {
+  order: 2;
+}
+
 .section-intro {
   padding: 4px 4px 2px;
 }
@@ -366,6 +387,22 @@ h1 {
   border-radius: 20px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(6px);
+}
+
+.warning-card {
+  background:
+    linear-gradient(180deg, rgba(214, 178, 75, 0.14), transparent 50%),
+    linear-gradient(180deg, rgba(78, 66, 20, 0.86), var(--warning-panel));
+  border-color: rgba(214, 178, 75, 0.42);
+}
+
+.warning-card .card-header p,
+.warning-card .used-slots,
+.warning-card .slot-pill,
+.warning-card .summary-stat,
+.warning-card .summary-stat span,
+.warning-card .summary-stat strong {
+  color: #ffefb5;
 }
 
 .member-card {
@@ -395,7 +432,8 @@ h1 {
 .summary-stats,
 .resource-list,
 .extra-slot-summary,
-.loot-list {
+.loot-list,
+.meal-list {
   display: grid;
   gap: 10px;
 }
@@ -407,7 +445,8 @@ h1 {
 
 .summary-stat,
 .extra-slot-item,
-.resource-row {
+.resource-row,
+.meal-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -420,18 +459,21 @@ h1 {
 
 .summary-stat,
 .resource-row,
-.loot-item-row {
+.loot-item-row,
+.meal-row {
   align-items: center;
 }
 
 .summary-stat strong,
 .extra-slot-item strong,
-.slot-pill strong {
+.slot-pill strong,
+.meal-member strong {
   color: #d5ecff;
 }
 
 .quick-actions,
-.loot-item-actions {
+.loot-item-actions,
+.meal-toggle-group {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -447,14 +489,23 @@ h1 {
   min-width: 56px;
 }
 
+.resource-add-form,
 .loot-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px auto;
   gap: 10px;
+}
+
+.resource-add-form {
+  margin-top: -2px;
+}
+
+.loot-form {
   margin-top: 18px;
   margin-bottom: 12px;
 }
 
+.resource-add-form input,
 .loot-form input,
 .member-form input,
 .member-form textarea {
@@ -467,7 +518,8 @@ h1 {
   font: inherit;
 }
 
-.muted-text {
+.muted-text,
+.meal-member span {
   color: var(--muted);
 }
 
@@ -528,7 +580,8 @@ h1 {
   color: var(--muted);
 }
 
-.member-form {
+.member-form,
+.eat-form {
   display: grid;
   gap: 14px;
 }
@@ -541,7 +594,8 @@ h1 {
 
 .member-form input:focus,
 .member-form textarea:focus,
-.loot-form input:focus {
+.loot-form input:focus,
+.resource-add-form input:focus {
   outline: 2px solid rgba(98, 169, 222, 0.28);
   border-color: rgba(98, 169, 222, 0.45);
 }
@@ -587,6 +641,32 @@ h1 {
   text-align: right;
 }
 
+.meal-member {
+  display: grid;
+  gap: 4px;
+}
+
+.meal-toggle-group input {
+  display: none;
+}
+
+.meal-toggle-group label {
+  cursor: pointer;
+}
+
+.meal-toggle-group span {
+  display: inline-block;
+  background: rgba(13, 20, 34, 0.78);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.meal-toggle-group input:checked + span {
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+  color: #08111f;
+  border-color: transparent;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -597,6 +677,14 @@ h1 {
 @media (max-width: 980px) {
   .page-layout {
     grid-template-columns: 1fr;
+  }
+
+  .sidebar-column {
+    order: 1;
+  }
+
+  .members-column {
+    order: 2;
   }
 }
 
@@ -611,7 +699,8 @@ h1 {
   .card-footer,
   .form-actions,
   .extra-slots-header,
-  .resource-row {
+  .resource-row,
+  .meal-row {
     flex-direction: column;
     align-items: stretch;
   }
@@ -632,6 +721,7 @@ h1 {
 
   .summary-stats,
   .loot-form,
+  .resource-add-form,
   .extra-slot-row {
     grid-template-columns: 1fr;
   }
@@ -642,7 +732,8 @@ h1 {
 
   .actions,
   .quick-actions,
-  .loot-item-actions {
+  .loot-item-actions,
+  .meal-toggle-group {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
