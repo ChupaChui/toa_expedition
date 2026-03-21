@@ -449,7 +449,7 @@ h1 {
 .member-theme-fire-red {
   background:
     linear-gradient(180deg, rgba(255, 88, 50, 0.26), transparent 52%),
-    linear-gradient(180deg, rgba(231, 39, 14, 0.95), rgba(56, 6, 4, 0.95));
+    linear-gradient(180deg, rgba(255, 0, 0, 0.95), rgba(166, 44, 43, 0.95));
   border-color: rgba(255, 104, 68, 0.34);
 }
 
