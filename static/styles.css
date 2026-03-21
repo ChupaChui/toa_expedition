@@ -227,7 +227,8 @@ body::before {
 }
 
 a,
-button {
+button,
+select {
   transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
@@ -389,6 +390,83 @@ h1 {
   backdrop-filter: blur(6px);
 }
 
+.member-theme-dark-blue {
+  background:
+    linear-gradient(180deg, rgba(39, 67, 120, 0.16), transparent 52%),
+    linear-gradient(180deg, rgba(24, 36, 56, 0.94), rgba(14, 24, 40, 0.92));
+}
+
+.member-theme-dark {
+  background:
+    linear-gradient(180deg, rgba(70, 70, 80, 0.1), transparent 52%),
+    linear-gradient(180deg, rgba(18, 18, 22, 0.96), rgba(6, 6, 10, 0.96));
+  border-color: rgba(175, 175, 185, 0.16);
+}
+
+.member-theme-white {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 52%),
+    linear-gradient(180deg, rgba(224, 232, 242, 0.96), rgba(203, 212, 225, 0.96));
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.member-theme-white h2,
+.member-theme-white p,
+.member-theme-white .used-slots,
+.member-theme-white .slot-pill,
+.member-theme-white .slot-pill strong,
+.member-theme-white .extra-slot-item,
+.member-theme-white .extra-slot-item strong {
+  color: #132030;
+}
+
+.member-theme-white .extra-slot-item {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(19, 32, 48, 0.08);
+}
+
+.member-theme-skyblue {
+  background:
+    linear-gradient(180deg, rgba(124, 203, 255, 0.22), transparent 52%),
+    linear-gradient(180deg, rgba(44, 102, 148, 0.94), rgba(18, 48, 76, 0.94));
+  border-color: rgba(124, 203, 255, 0.28);
+}
+
+.member-theme-silver {
+  background:
+    linear-gradient(180deg, rgba(210, 220, 235, 0.16), transparent 52%),
+    linear-gradient(180deg, rgba(78, 88, 108, 0.92), rgba(47, 54, 68, 0.92));
+  border-color: rgba(210, 220, 235, 0.28);
+}
+
+.member-theme-fire-red {
+  background:
+    linear-gradient(180deg, rgba(217, 84, 66, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(80, 28, 24, 0.94), rgba(45, 14, 14, 0.94));
+  border-color: rgba(217, 84, 66, 0.26);
+}
+
+.member-theme-violet {
+  background:
+    linear-gradient(180deg, rgba(150, 104, 216, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(57, 34, 82, 0.94), rgba(29, 16, 45, 0.94));
+  border-color: rgba(150, 104, 216, 0.24);
+}
+
+.member-theme-celestial {
+  background:
+    linear-gradient(180deg, rgba(232, 205, 118, 0.2), transparent 52%),
+    linear-gradient(180deg, rgba(92, 79, 34, 0.94), rgba(49, 39, 15, 0.94));
+  border-color: rgba(232, 205, 118, 0.28);
+}
+
+.member-theme-green {
+  background:
+    linear-gradient(180deg, rgba(88, 177, 110, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(26, 62, 37, 0.94), rgba(13, 36, 20, 0.94));
+  border-color: rgba(88, 177, 110, 0.24);
+}
+
 .warning-card {
   background:
     linear-gradient(180deg, rgba(214, 178, 75, 0.14), transparent 50%),
@@ -496,6 +574,10 @@ h1 {
   gap: 10px;
 }
 
+.loot-form-wide {
+  grid-template-columns: minmax(0, 1.4fr) 110px 130px auto;
+}
+
 .resource-add-form {
   margin-top: -2px;
 }
@@ -508,7 +590,8 @@ h1 {
 .resource-add-form input,
 .loot-form input,
 .member-form input,
-.member-form textarea {
+.member-form textarea,
+.member-form select {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -594,6 +677,7 @@ h1 {
 
 .member-form input:focus,
 .member-form textarea:focus,
+.member-form select:focus,
 .loot-form input:focus,
 .resource-add-form input:focus {
   outline: 2px solid rgba(98, 169, 222, 0.28);
@@ -721,6 +805,7 @@ h1 {
 
   .summary-stats,
   .loot-form,
+  .loot-form-wide,
   .resource-add-form,
   .extra-slot-row {
     grid-template-columns: 1fr;

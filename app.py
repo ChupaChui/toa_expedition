@@ -14,6 +14,17 @@ FULL_MEAL_FOOD = 1.0
 FULL_MEAL_WATER = 5.0
 HALF_MEAL_FOOD = 0.5
 HALF_MEAL_WATER = 2.5
+CARD_COLORS = {
+    "dark-blue": "Dark Blue",
+    "dark": "Dark",
+    "skyblue": "Skyblue",
+    "silver": "Silver",
+    "fire-red": "Fire Red",
+    "violet": "Violet",
+    "celestial": "Celestial",
+    "green": "Green",
+}
+DEFAULT_CARD_COLOR = "dark-blue"
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-secret-key"
@@ -52,7 +63,8 @@ def create_db() -> None:
             name TEXT NOT NULL,
             str_mod INTEGER NOT NULL DEFAULT 0,
             max_slots INTEGER NOT NULL DEFAULT 0,
-            used_slots INTEGER NOT NULL DEFAULT 0
+            used_slots INTEGER NOT NULL DEFAULT 0,
+            card_color TEXT NOT NULL DEFAULT 'dark-blue'
         );
 
         CREATE TABLE IF NOT EXISTS extra_slots (
@@ -77,15 +89,6 @@ def create_db() -> None:
         );
         """
     )
-
-    loot_columns = {
-        row[1] for row in db.execute("PRAGMA table_info(loot_items)").fetchall()
-    }
-    if "gold_price" not in loot_columns:
-        db.execute(
-            "ALTER TABLE loot_items ADD COLUMN gold_price INTEGER NOT NULL DEFAULT 0"
-        )
-
     db.execute(
         """
         INSERT INTO party_supplies (id, food, water)
@@ -161,10 +164,11 @@ def get_members_with_capacity() -> list[dict[str, object]]:
             m.name,
             m.str_mod,
             m.used_slots,
+            m.card_color,
             COALESCE(SUM(e.amount), 0) AS extra_slots_total
         FROM members AS m
         LEFT JOIN extra_slots AS e ON e.member_id = m.id
-        GROUP BY m.id, m.name, m.str_mod, m.used_slots
+        GROUP BY m.id, m.name, m.str_mod, m.used_slots, m.card_color
         ORDER BY m.id DESC
         """
     ).fetchall()
@@ -181,6 +185,7 @@ def get_members_with_capacity() -> list[dict[str, object]]:
                 "name": row["name"],
                 "str_mod": row["str_mod"],
                 "used_slots": row["used_slots"],
+                "card_color": row["card_color"],
                 "extra_slots_total": row["extra_slots_total"],
                 "max_slots": member_max_slots,
                 "current_free_slots": current_free_slots,
@@ -277,14 +282,15 @@ def add_member() -> str:
         db = get_db()
         cursor = db.execute(
             """
-            INSERT INTO members (name, str_mod, max_slots, used_slots)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO members (name, str_mod, max_slots, used_slots, card_color)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 form["name"],
                 form["str_mod"],
                 BASE_SLOTS + int(form["str_mod"]),
                 form["used_slots"],
+                form["card_color"],
             ),
         )
         member_id = cursor.lastrowid
@@ -297,6 +303,7 @@ def add_member() -> str:
         "form.html",
         member=None,
         extra_slots=[{"name": "", "amount": 0}],
+        color_options=CARD_COLORS,
         page_title="Add Entry",
     )
 
@@ -314,7 +321,7 @@ def edit_member(member_id: int) -> str:
         db.execute(
             """
             UPDATE members
-            SET name = ?, str_mod = ?, max_slots = ?, used_slots = ?
+            SET name = ?, str_mod = ?, max_slots = ?, used_slots = ?, card_color = ?
             WHERE id = ?
             """,
             (
@@ -322,6 +329,7 @@ def edit_member(member_id: int) -> str:
                 form["str_mod"],
                 BASE_SLOTS + int(form["str_mod"]),
                 form["used_slots"],
+                form["card_color"],
                 member_id,
             ),
         )
@@ -342,6 +350,7 @@ def edit_member(member_id: int) -> str:
         "form.html",
         member=member,
         extra_slots=extra_slots,
+        color_options=CARD_COLORS,
         page_title="Edit Entry",
     )
 
@@ -496,9 +505,12 @@ def validate_party_capacity(db: sqlite3.Connection) -> None:
 
 def parse_member_form(form: dict) -> dict[str, int | str | list[dict[str, int | str]]]:
     name = str(form.get("name", "")).strip()
+    card_color = str(form.get("card_color", DEFAULT_CARD_COLOR)).strip()
 
     if not name:
         raise ValueError("Name is required.")
+    if card_color not in CARD_COLORS:
+        raise ValueError("Choose a valid card color.")
 
     try:
         str_mod = int(form.get("str_mod", 0))
@@ -538,6 +550,7 @@ def parse_member_form(form: dict) -> dict[str, int | str | list[dict[str, int | 
         "name": name,
         "str_mod": str_mod,
         "used_slots": used_slots,
+        "card_color": card_color,
         "extra_slots": extra_slots,
     }
 

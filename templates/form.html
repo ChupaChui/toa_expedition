@@ -20,6 +20,15 @@
       </label>
 
       <label>
+        Card color
+        <select name="card_color">
+          {% for color_id, color_label in color_options.items() %}
+            <option value="{{ color_id }}" {% if (member and member['card_color'] == color_id) or (not member and color_id == 'dark-blue') %}selected{% endif %}>{{ color_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
         STR mod
         <input
           type="number"

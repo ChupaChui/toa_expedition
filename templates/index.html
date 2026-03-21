@@ -10,7 +10,7 @@
 
       <section class="card-list">
         {% for member in members %}
-          <article class="member-card{% if member['current_free_slots'] <= 0 %} warning-card{% endif %}">
+          <article class="member-card member-theme-{{ member['card_color'] }}{% if member['current_free_slots'] <= 0 %} warning-card{% endif %}">
             <div class="card-header">
               <div>
                 <h2>{{ member["name"] }}</h2>
