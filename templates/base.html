@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "Expedition Tracker" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div class="scene-backdrop" aria-hidden="true">
+      <div class="mist mist-one"></div>
+      <div class="mist mist-two"></div>
+      <div class="canopy canopy-left"></div>
+      <div class="canopy canopy-right"></div>
+      <div class="dino dino-left"></div>
+      <div class="dino dino-right"></div>
+      <div class="grass grass-back"></div>
+      <div class="grass grass-front"></div>
+    </div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="title-group">
+          <p class="eyebrow">Chult Expedition Ledger</p>
+          <h1>Jungle Roster</h1>
+          <p class="tagline">Track your party through the deep jungle.</p>
+        </div>
+        <a class="primary-button" href="{{ url_for('add_member') }}">Add</a>
+      </header>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for message in messages %}
+              <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <main>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

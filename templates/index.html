@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="card-list">
+    {% for member in members %}
+      <article class="member-card">
+        <div class="card-header">
+          <div>
+            <h2>{{ member["name"] }}</h2>
+            <p>STR mod: {{ member["str_mod"] }}</p>
+            <p>Free slots: {{ member["free_slots"] }}</p>
+            {% if member["note"] %}
+              <p class="note">{{ member["note"] }}</p>
+            {% endif %}
+          </div>
+          <div class="slot-pill">
+            <span>Max slots</span>
+            <strong>{{ member["max_slots"] }}</strong>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <span class="used-slots">Used slots: {{ member["used_slots"] }}</span>
+          <div class="actions">
+            <a href="{{ url_for('edit_member', member_id=member['id']) }}">Edit</a>
+            <form action="{{ url_for('delete_member', member_id=member['id']) }}" method="post">
+              <button type="submit" onclick="return confirm('Delete this entry?');">Delete</button>
+            </form>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      <div class="empty-state">
+        <h2>No entries yet</h2>
+        <p>Add your first character or expedition member to get started.</p>
+      </div>
+    {% endfor %}
+  </section>
+{% endblock %}

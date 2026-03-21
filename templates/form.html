@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="form-panel">
+    <div class="panel-heading">
+      <h2>{{ page_title }}</h2>
+      <p>Store simple character details like name, STR mod, and slot counts.</p>
+    </div>
+
+    <form class="member-form" method="post">
+      <label>
+        Name
+        <input
+          type="text"
+          name="name"
+          value="{{ member['name'] if member else '' }}"
+          placeholder="Vivy"
+          required
+        >
+      </label>
+
+      <label>
+        STR mod
+        <input
+          type="number"
+          name="str_mod"
+          value="{{ member['str_mod'] if member else 0 }}"
+        >
+      </label>
+
+      <label>
+        Max slots
+        <input
+          type="number"
+          name="max_slots"
+          min="0"
+          value="{{ member['max_slots'] if member else 10 }}"
+        >
+      </label>
+
+      <label>
+        Used slots
+        <input
+          type="number"
+          name="used_slots"
+          min="0"
+          value="{{ member['used_slots'] if member else 0 }}"
+        >
+      </label>
+
+      <label>
+        Note
+        <textarea name="note" rows="3" placeholder="Extra info">{{ member['note'] if member else '' }}</textarea>
+      </label>
+
+      <div class="form-actions">
+        <a class="ghost-button" href="{{ url_for('index') }}">Cancel</a>
+        <button class="primary-button" type="submit">Save</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}
