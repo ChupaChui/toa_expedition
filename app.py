@@ -19,6 +19,7 @@ CARD_COLORS = {
     "dark": "Dark",
     "skyblue": "Skyblue",
     "silver": "Silver",
+    "blood": "Blood",
     "fire-red": "Fire Red",
     "violet": "Violet",
     "celestial": "Celestial",
