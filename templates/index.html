@@ -1,39 +1,181 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="card-list">
-    {% for member in members %}
-      <article class="member-card">
-        <div class="card-header">
-          <div>
-            <h2>{{ member["name"] }}</h2>
-            <p>STR mod: {{ member["str_mod"] }}</p>
-            <p>Free slots: {{ member["free_slots"] }}</p>
-            {% if member["note"] %}
-              <p class="note">{{ member["note"] }}</p>
-            {% endif %}
-          </div>
-          <div class="slot-pill">
-            <span>Max slots</span>
-            <strong>{{ member["max_slots"] }}</strong>
-          </div>
-        </div>
-
-        <div class="card-footer">
-          <span class="used-slots">Used slots: {{ member["used_slots"] }}</span>
-          <div class="actions">
-            <a href="{{ url_for('edit_member', member_id=member['id']) }}">Edit</a>
-            <form action="{{ url_for('delete_member', member_id=member['id']) }}" method="post">
-              <button type="submit" onclick="return confirm('Delete this entry?');">Delete</button>
-            </form>
-          </div>
-        </div>
-      </article>
-    {% else %}
-      <div class="empty-state">
-        <h2>No entries yet</h2>
-        <p>Add your first character or expedition member to get started.</p>
+  <section class="page-layout">
+    <div class="page-column members-column">
+      <div class="section-intro">
+        <h2>Party Members</h2>
+        <p>Each member contributes personal carrying capacity to the party total.</p>
       </div>
-    {% endfor %}
+
+      <section class="card-list">
+        {% for member in members %}
+          <article class="member-card">
+            <div class="card-header">
+              <div>
+                <h2>{{ member["name"] }}</h2>
+                <p>STR mod: {{ member["str_mod"] }}</p>
+                <p>Base slots: 10</p>
+                <p>Max slots: {{ member["max_slots"] }}</p>
+                {% if member["extra_slots"] %}
+                  <div class="extra-slot-summary">
+                    {% for item in member["extra_slots"] %}
+                      <div class="extra-slot-item">
+                        <span>{{ item["name"] }}</span>
+                        <strong>+{{ item["amount"] }}</strong>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="slot-pill">
+                <span>Member max</span>
+                <strong>{{ member["max_slots"] }}</strong>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <span class="used-slots">Formula: 10 + {{ member["str_mod"] }} + {{ member["extra_slots_total"] }}</span>
+              <div class="actions">
+                <a href="{{ url_for('edit_member', member_id=member['id']) }}">Edit</a>
+                <form action="{{ url_for('delete_member', member_id=member['id']) }}" method="post">
+                  <button type="submit" onclick="return confirm('Delete this entry?');">Delete</button>
+                </form>
+              </div>
+            </div>
+          </article>
+        {% else %}
+          <div class="empty-state">
+            <h2>No entries yet</h2>
+            <p>Add your first character or expedition member to get started.</p>
+          </div>
+        {% endfor %}
+      </section>
+    </div>
+
+    <aside class="page-column sidebar-column">
+      <div class="section-intro">
+        <h2>Party Supplies</h2>
+        <p>Food, water, loot, and the total party carrying load.</p>
+      </div>
+
+      <section class="dashboard-stack">
+        <article class="member-card summary-card">
+          <div class="card-header">
+            <div>
+              <h2>Party Slots</h2>
+              <p>Total carrying capacity across the full party.</p>
+            </div>
+            <div class="slot-pill">
+              <span>Free party slots</span>
+              <strong>{{ party_summary["free_party_slots"] }}</strong>
+            </div>
+          </div>
+
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span>Max party slots</span>
+              <strong>{{ party_summary["max_party_slots"] }}</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Occupied slots</span>
+              <strong>{{ party_summary["occupied_slots"] }}</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Food slots</span>
+              <strong>{{ party_summary["food_slots"] }}</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Water slots</span>
+              <strong>{{ party_summary["water_slots"] }}</strong>
+            </div>
+            <div class="summary-stat">
+              <span>Loot slots</span>
+              <strong>{{ party_summary["loot_slots"] }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="member-card resource-card">
+          <div class="card-header">
+            <div>
+              <h2>Food And Water</h2>
+              <p>5 food = 1 slot, 5 water = 1 slot.</p>
+            </div>
+          </div>
+
+          <div class="resource-list">
+            <div class="resource-row">
+              <div>
+                <h3>Food</h3>
+                <p>{{ supplies["food"] }} total | {{ party_summary["food_slots"] }} slot{{ '' if party_summary["food_slots"] == 1 else 's' }}</p>
+              </div>
+              <div class="quick-actions">
+                <form action="{{ url_for('update_supplies') }}" method="post">
+                  <input type="hidden" name="resource" value="food">
+                  <input type="hidden" name="direction" value="remove">
+                  <button type="submit">-1</button>
+                </form>
+                <form action="{{ url_for('update_supplies') }}" method="post">
+                  <input type="hidden" name="resource" value="food">
+                  <input type="hidden" name="direction" value="add">
+                  <button type="submit">+1</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="resource-row">
+              <div>
+                <h3>Water</h3>
+                <p>{{ supplies["water"] }} total | {{ party_summary["water_slots"] }} slot{{ '' if party_summary["water_slots"] == 1 else 's' }}</p>
+              </div>
+              <div class="quick-actions">
+                <form action="{{ url_for('update_supplies') }}" method="post">
+                  <input type="hidden" name="resource" value="water">
+                  <input type="hidden" name="direction" value="remove">
+                  <button type="submit">-5</button>
+                </form>
+                <form action="{{ url_for('update_supplies') }}" method="post">
+                  <input type="hidden" name="resource" value="water">
+                  <input type="hidden" name="direction" value="add">
+                  <button type="submit">+5</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="member-card loot-card-panel">
+          <div class="card-header">
+            <div>
+              <h2>Loot</h2>
+              <p>Loot uses current weight directly as occupied slots.</p>
+            </div>
+          </div>
+
+          <form class="loot-form" action="{{ url_for('add_loot') }}" method="post">
+            <input type="text" name="name" placeholder="Gold idol, jade goblet" required>
+            <input type="number" name="amount" min="1" placeholder="Weight" required>
+            <button class="primary-button" type="submit">Add loot</button>
+          </form>
+
+          <div class="extra-slot-summary loot-list">
+            {% for item in loot_items %}
+              <div class="extra-slot-item loot-item-row">
+                <span>{{ item["name"] }}</span>
+                <div class="loot-item-actions">
+                  <strong>{{ item["amount"] }}</strong>
+                  <form action="{{ url_for('delete_loot', loot_id=item['id']) }}" method="post">
+                    <button type="submit">Remove</button>
+                  </form>
+                </div>
+              </div>
+            {% else %}
+              <p class="muted-text">No loot tracked yet.</p>
+            {% endfor %}
+          </div>
+        </article>
+      </section>
+    </aside>
   </section>
 {% endblock %}

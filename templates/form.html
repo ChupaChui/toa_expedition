@@ -4,7 +4,7 @@
   <section class="form-panel">
     <div class="panel-heading">
       <h2>{{ page_title }}</h2>
-      <p>Store simple character details like name, STR mod, and slot counts.</p>
+      <p>Base slots are always 10. Max slots are calculated as 10 + STR mod + extra slots.</p>
     </div>
 
     <form class="member-form" method="post">
@@ -28,30 +28,36 @@
         >
       </label>
 
-      <label>
-        Max slots
-        <input
-          type="number"
-          name="max_slots"
-          min="0"
-          value="{{ member['max_slots'] if member else 10 }}"
-        >
-      </label>
+      <section class="extra-slots-section">
+        <div class="extra-slots-header">
+          <div>
+            <h3>Extra Slots</h3>
+            <p>Add as many extra slot sources as you need.</p>
+          </div>
+          <button class="ghost-button add-row-button" type="button" id="add-extra-slot">Add row</button>
+        </div>
 
-      <label>
-        Used slots
-        <input
-          type="number"
-          name="used_slots"
-          min="0"
-          value="{{ member['used_slots'] if member else 0 }}"
-        >
-      </label>
-
-      <label>
-        Note
-        <textarea name="note" rows="3" placeholder="Extra info">{{ member['note'] if member else '' }}</textarea>
-      </label>
+        <div class="extra-slot-list" id="extra-slot-list">
+          {% for item in extra_slots %}
+            <div class="extra-slot-row">
+              <input
+                type="text"
+                name="extra_slots_name"
+                value="{{ item['name'] }}"
+                placeholder="Porter, mule, bag of holding"
+              >
+              <input
+                type="number"
+                name="extra_slots_amount"
+                min="0"
+                value="{{ item['amount'] }}"
+                placeholder="0"
+              >
+              <button class="remove-row-button" type="button">Remove</button>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
 
       <div class="form-actions">
         <a class="ghost-button" href="{{ url_for('index') }}">Cancel</a>
@@ -59,4 +65,51 @@
       </div>
     </form>
   </section>
+
+  <template id="extra-slot-template">
+    <div class="extra-slot-row">
+      <input
+        type="text"
+        name="extra_slots_name"
+        placeholder="Porter, mule, bag of holding"
+      >
+      <input
+        type="number"
+        name="extra_slots_amount"
+        min="0"
+        value="0"
+        placeholder="0"
+      >
+      <button class="remove-row-button" type="button">Remove</button>
+    </div>
+  </template>
+
+  <script>
+    const list = document.getElementById("extra-slot-list");
+    const addButton = document.getElementById("add-extra-slot");
+    const template = document.getElementById("extra-slot-template");
+
+    function bindRemoveButtons() {
+      const rows = list.querySelectorAll(".extra-slot-row");
+      rows.forEach((row) => {
+        const removeButton = row.querySelector(".remove-row-button");
+        removeButton.onclick = () => {
+          if (list.children.length === 1) {
+            row.querySelector('input[name="extra_slots_name"]').value = "";
+            row.querySelector('input[name="extra_slots_amount"]').value = 0;
+            return;
+          }
+          row.remove();
+        };
+      });
+    }
+
+    addButton.onclick = () => {
+      const clone = template.content.cloneNode(true);
+      list.appendChild(clone);
+      bindRemoveButtons();
+    };
+
+    bindRemoveButtons();
+  </script>
 {% endblock %}
