@@ -596,6 +596,7 @@ h1 {
 
 .resource-add-form input,
 .loot-form input,
+.days-field input,
 .member-form input,
 .member-form textarea,
 .member-form select {
@@ -676,7 +677,8 @@ h1 {
   gap: 14px;
 }
 
-.member-form label {
+.member-form label,
+.days-field {
   display: grid;
   gap: 8px;
   color: var(--muted);
@@ -686,9 +688,14 @@ h1 {
 .member-form textarea:focus,
 .member-form select:focus,
 .loot-form input:focus,
-.resource-add-form input:focus {
+.resource-add-form input:focus,
+.days-field input:focus {
   outline: 2px solid rgba(98, 169, 222, 0.28);
   border-color: rgba(98, 169, 222, 0.45);
+}
+
+.days-field {
+  max-width: 180px;
 }
 
 .extra-slots-section {

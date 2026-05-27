@@ -4,7 +4,7 @@
   <section class="form-panel eat-panel">
     <div class="panel-heading">
       <h2>Eat</h2>
-      <p>Choose a meal for each party member. Full meal uses 1 food and 5 water. Half-meal uses 0.5 food and 2.5 water.</p>
+      <p>Choose a meal for each party member and how many days to spend supplies on. Full meal uses 1 food and 5 water per day. Half-meal uses 0.5 food and 2.5 water per day.</p>
     </div>
 
     {% with popup_messages = get_flashed_messages(category_filter=['popup']) %}
@@ -16,6 +16,11 @@
     {% endwith %}
 
     <form class="eat-form" method="post" action="{{ url_for('apply_meals') }}">
+      <label class="days-field">
+        <span>Days</span>
+        <input type="number" name="days" min="1" step="1" value="1" required>
+      </label>
+
       <div class="meal-list">
         {% for member in members %}
           <div class="meal-row">

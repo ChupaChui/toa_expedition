@@ -79,7 +79,8 @@ def create_db() -> None:
         CREATE TABLE IF NOT EXISTS party_supplies (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             food REAL NOT NULL DEFAULT 0,
-            water REAL NOT NULL DEFAULT 0
+            water REAL NOT NULL DEFAULT 0,
+            max_water REAL NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS loot_items (
@@ -90,15 +91,27 @@ def create_db() -> None:
         );
         """
     )
+    ensure_party_supply_columns(db)
     db.execute(
         """
-        INSERT INTO party_supplies (id, food, water)
-        VALUES (1, 0, 0)
+        INSERT INTO party_supplies (id, food, water, max_water)
+        VALUES (1, 0, 0, 0)
         ON CONFLICT(id) DO NOTHING
         """
     )
     db.commit()
     db.close()
+
+
+def ensure_party_supply_columns(db: sqlite3.Connection) -> None:
+    columns = {
+        row[1] for row in db.execute("PRAGMA table_info(party_supplies)").fetchall()
+    }
+    if "max_water" not in columns:
+        db.execute(
+            "ALTER TABLE party_supplies ADD COLUMN max_water REAL NOT NULL DEFAULT 0"
+        )
+        db.commit()
 
 
 def get_member(member_id: int) -> sqlite3.Row:
@@ -123,16 +136,17 @@ def get_member_extra_slots(member_id: int) -> list[sqlite3.Row]:
 
 
 def get_party_supplies() -> sqlite3.Row:
+    ensure_party_supply_columns(get_db())
     supplies = get_db().execute(
-        "SELECT food, water FROM party_supplies WHERE id = 1"
+        "SELECT food, water, max_water FROM party_supplies WHERE id = 1"
     ).fetchone()
     if supplies is None:
         get_db().execute(
-            "INSERT INTO party_supplies (id, food, water) VALUES (1, 0, 0)"
+            "INSERT INTO party_supplies (id, food, water, max_water) VALUES (1, 0, 0, 0)"
         )
         get_db().commit()
         supplies = get_db().execute(
-            "SELECT food, water FROM party_supplies WHERE id = 1"
+            "SELECT food, water, max_water FROM party_supplies WHERE id = 1"
         ).fetchone()
     return supplies
 
@@ -240,23 +254,52 @@ def eat_page() -> str:
 @app.post("/eat")
 def apply_meals() -> str:
     members = get_members_with_capacity()
-    food_needed = 0.0
-    water_needed = 0.0
+    daily_food_needed = 0.0
+    daily_water_needed = 0.0
+
+    try:
+        days = int(request.form.get("days", 1))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Days must be a number.") from exc
+
+    if days <= 0:
+        raise ValueError("Days must be greater than 0.")
 
     for member in members:
         meal = str(request.form.get(f"meal_{member['id']}", "full")).strip()
         if meal == "full":
-            food_needed += FULL_MEAL_FOOD
-            water_needed += FULL_MEAL_WATER
+            daily_food_needed += FULL_MEAL_FOOD
+            daily_water_needed += FULL_MEAL_WATER
         elif meal == "half":
-            food_needed += HALF_MEAL_FOOD
-            water_needed += HALF_MEAL_WATER
+            daily_food_needed += HALF_MEAL_FOOD
+            daily_water_needed += HALF_MEAL_WATER
         elif meal != "none":
             raise ValueError("Unknown meal option.")
 
+    food_needed = daily_food_needed * days
+    water_needed = daily_water_needed * days
+    requested_day_label = "day" if days == 1 else "days"
+
     supplies = get_party_supplies()
     if float(supplies["food"]) < food_needed or float(supplies["water"]) < water_needed:
-        flash("Not enough food or water for that meal plan.", "popup")
+        food_days = (
+            float("inf")
+            if daily_food_needed == 0
+            else int(float(supplies["food"]) // daily_food_needed)
+        )
+        water_days = (
+            float("inf")
+            if daily_water_needed == 0
+            else int(float(supplies["water"]) // daily_water_needed)
+        )
+        enough_days = min(food_days, water_days)
+        if enough_days == float("inf"):
+            enough_days = days
+        day_label = "day" if enough_days == 1 else "days"
+        flash(
+            f"Not enough food or water for {days} {requested_day_label}. Current supplies are enough for {int(enough_days)} {day_label}.",
+            "popup",
+        )
         return redirect(url_for("eat_page"))
 
     get_db().execute(
@@ -268,7 +311,7 @@ def apply_meals() -> str:
         (float(supplies["food"]) - food_needed, float(supplies["water"]) - water_needed),
     )
     get_db().commit()
-    flash("Meal plan applied.")
+    flash(f"Meal plan applied for {days} {requested_day_label}.")
     return redirect(url_for("index"))
 
 
@@ -373,10 +416,12 @@ def update_supplies() -> str:
     direction = str(request.form.get("direction", "")).strip()
     mode = str(request.form.get("mode", "quick")).strip()
 
-    if resource not in {"food", "water"}:
+    if resource not in {"food", "water", "max_water"}:
         raise ValueError("Unknown supply type.")
 
     if mode == "quick":
+        if resource not in {"food", "water"}:
+            raise ValueError("Unknown supply action.")
         if direction not in {"add", "remove"}:
             raise ValueError("Unknown supply action.")
         step = WATER_STEP if resource == "water" else 1
@@ -391,6 +436,11 @@ def update_supplies() -> str:
         if amount < 0:
             raise ValueError("Supply amount cannot be negative.")
         next_amount = amount
+    elif mode == "fill_max_water":
+        if resource != "water":
+            raise ValueError("Unknown supply action.")
+        supplies = get_party_supplies()
+        next_amount = float(supplies["max_water"])
     else:
         raise ValueError("Unknown supply mode.")
 

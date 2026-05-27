@@ -148,7 +148,7 @@
             <div class="resource-row">
               <div>
                 <h3>Water</h3>
-                <p>{{ supplies["water"]|pretty_amount }} total | {{ party_summary["water_slots"] }} slot{{ '' if party_summary["water_slots"] == 1 else 's' }}</p>
+                <p>{{ supplies["water"]|pretty_amount }} total | {{ supplies["max_water"]|pretty_amount }} max | {{ party_summary["water_slots"] }} slot{{ '' if party_summary["water_slots"] == 1 else 's' }}</p>
               </div>
               <div class="quick-actions">
                 <form action="{{ url_for('update_supplies') }}" method="post">
@@ -161,6 +161,11 @@
                   <input type="hidden" name="direction" value="add">
                   <button type="submit">+5</button>
                 </form>
+                <form action="{{ url_for('update_supplies') }}" method="post">
+                  <input type="hidden" name="resource" value="water">
+                  <input type="hidden" name="mode" value="fill_max_water">
+                  <button type="submit">Fill max</button>
+                </form>
               </div>
             </div>
 
@@ -169,6 +174,13 @@
               <input type="hidden" name="mode" value="set">
               <input type="number" name="amount" min="0" step="0.5" value="{{ supplies['water']|pretty_amount }}" required>
               <button type="submit">Set water</button>
+            </form>
+
+            <form class="resource-add-form" action="{{ url_for('update_supplies') }}" method="post">
+              <input type="hidden" name="resource" value="max_water">
+              <input type="hidden" name="mode" value="set">
+              <input type="number" name="amount" min="0" step="0.5" value="{{ supplies['max_water']|pretty_amount }}" required>
+              <button type="submit">Set max water</button>
             </form>
           </div>
         </article>
